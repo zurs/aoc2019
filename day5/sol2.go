@@ -24,33 +24,74 @@ func main(){
 
 	for i := 0; i < len(program); {
 		opcode := parseOpcode(program, i)
-		opcode.executeOpcode(&program)
-		i += opcode.noOfParameters() + 1
+		//fmt.Printf("Executing: %v\n", opcode)
+		jump := opcode.executeOpcode(&program)
+		if jump != 0 {
+			i = jump
+		} else {
+			i += opcode.noOfParameters() + 1
+		}
+		
 	}
 }
 
 func getInput() int {
-	return 1
+	return 5
 }
 
-func (opcode *Opcode) executeOpcode(program *[]string) {
-	if opcode.code == 1 {
-		// Addition
-		result := opcode.parameters[0].getValue(*program) + opcode.parameters[1].getValue(*program)
-		opcode.parameters[2].storeValue(program, result)
-	} else if  opcode.code == 2 {
-		// Multiplication
-		result := opcode.parameters[0].getValue(*program) * opcode.parameters[1].getValue(*program)
-		opcode.parameters[2].storeValue(program, result)
+func (opcode *Opcode) executeOpcode(program *[]string) int {
+	jump := 0
+
+	if opcode.noOfParameters() >= 2 {
+		param1 := opcode.parameters[0].getValue(*program)
+		param2 := opcode.parameters[1].getValue(*program)
+		if opcode.code == 1 {
+			// Addition
+			result := param1 + param2
+			opcode.parameters[2].storeValue(program, result)
+		} else if opcode.code == 2 {
+			// Multiplication
+			result := param1 * param2
+			opcode.parameters[2].storeValue(program, result)
+		} else if opcode.code == 5 {
+			// Jump-if-true
+			if param1 != 0 {
+				jump = param2
+			}
+		} else if opcode.code == 6 {
+			// Jump-if-false
+			if param1 == 0 {
+				jump = param2
+			}
+		} else if opcode.code == 7 {
+			// Less-than
+			if param1 < param2 {
+				opcode.parameters[2].storeValue(program, 1)
+			} else {
+				opcode.parameters[2].storeValue(program, 0)
+			}
+		} else if opcode.code == 8 {
+			// Equals
+			if param1 == param2 {
+				opcode.parameters[2].storeValue(program, 1)
+			} else {
+				opcode.parameters[2].storeValue(program, 0)
+			}
+		}
 	} else if opcode.code == 3 {
+		// Store input at a location
 		input := getInput()
 		opcode.parameters[0].storeValue(program, input)
 	} else if opcode.code == 4 {
+		// Print value at the postition
 		fmt.Printf("Diagnostic code: %d\n", opcode.parameters[0].getValue(*program))
 	} else if opcode.code == 99 {
+		// Halt and exit
 		fmt.Println("Halt!")
 		os.Exit(0)
 	}
+
+	return jump
 }
 
 func (parameter Parameter) getValue(program []string) int {
@@ -94,8 +135,10 @@ func parseOpcode(program []string, index int) Opcode {
 
 func (opcode *Opcode) noOfParameters() int {
 	code := opcode.code
-	if code == 1 || code == 2 {
+	if code == 1 || code == 2 || code == 7 || code == 8 {
 		return 3
+	} else if code == 5 || code == 6 {
+		return 2
 	} else if code == 3 || code == 4 {
 		return 1
 	}
